@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>15パズル</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px 0;
+    box-sizing: border-box;
+    touch-action: manipulation;
+  }
+  h1 { margin: 5px 0; font-size: 1.5rem; color: #333; }
+  #info { margin-bottom: 10px; font-size: 1rem; color: #666; }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background: #bbada0;
+    padding: 10px;
+    border-radius: 8px;
+    width: 320px;
+    height: 320px;
+    box-sizing: border-box;
+  }
+  .tile {
+    background: #eee4da;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #776e65;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+  }
+  .tile.empty {
+    background: #cdc1b4;
+    cursor: default;
+  }
+  button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    background: #8f7a66;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:active { background: #7f6a56; }
+  #message {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #e74c3c;
+    height: 1.5rem;
+  }
+  #rules {
+    margin-top: 18px;
+    max-width: 320px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #555;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    box-sizing: border-box;
+  }
+  #rules h2 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    color: #333;
+  }
+  #rules ol {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+</style>
+</head>
+<body>
+
+<h1>15パズル</h1>
+<div id="info">手数: <span id="moves">0</span></div>
+<div id="board"></div>
+<div id="message"></div>
+<button id="shuffleBtn">シャッフル</button>
+
+<div id="rules">
+  <h2>あそびかた・ルール</h2>
+  <ol>
+    <li>空白のとなりにある数字タイルをタップすると、空白の場所へスライドします。</li>
+    <li>数字を左上から 1→2→3…→15 の順に並べ替えればクリアです（右下が空白になります）。</li>
+    <li>タイルを動かすたびに手数が1つ増えます。少ない手数でのクリアを目指しましょう。</li>
+    <li>「シャッフル」ボタンを押すと、配置がバラバラになって最初からやり直せます。</li>
+  </ol>
+</div>
+
+<script>
+const boardEl = document.getElementById('board');
+const movesEl = document.getElementById('moves');
+const messageEl = document.getElementById('message');
+const shuffleBtn = document.getElementById('shuffleBtn');
+
+let state = [...Array(15).keys()].map(x => x + 1).concat([null]);
+let moves = 0;
+let isPlaying = false;
+
+function render() {
+  boardEl.innerHTML = '';
+  state.forEach((val, idx) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile' + (val === null ? ' empty' : '');
+    tile.textContent = val !== null ? val : '';
+    tile.addEventListener('click', () => move(idx));
+    boardEl.appendChild(tile);
+  });
+  movesEl.textContent = moves;
+}
+
+function getValidMoves(emptyIdx) {
+  const r = Math.floor(emptyIdx / 4);
+  const c = emptyIdx % 4;
+  const valid = [];
+  if (r > 0) valid.push(emptyIdx - 4);
+  if (r < 3) valid.push(emptyIdx + 4);
+  if (c > 0) valid.push(emptyIdx - 1);
+  if (c < 3) valid.push(emptyIdx + 1);
+  return valid;
+}
+
+function move(idx) {
+  if (!isPlaying) return;
+  const emptyIdx = state.indexOf(null);
+  const validMoves = getValidMoves(emptyIdx);
+
+  if (validMoves.includes(idx)) {
+    state[emptyIdx] = state[idx];
+    state[idx] = null;
+    moves++;
+    render();
+    checkWin();
+  }
+}
+
+function shuffle() {
+  messageEl.textContent = '';
+  moves = 0;
+  // 必ず解けるように、空きマスのランダムな合法手移動を100回繰り返す
+  for (let i = 0; i < 100; i++) {
+    const emptyIdx = state.indexOf(null);
+    const validMoves = getValidMoves(emptyIdx);
+    const randomIdx = validMoves[Math.floor(Math.random() * validMoves.length)];
+    state[emptyIdx] = state[randomIdx];
+    state[randomIdx] = null;
+  }
+  // 万が一最初から揃っていた場合の再シャッフル
+  if (checkWinCondition()) {
+    shuffle();
+    return;
+  }
+  isPlaying = true;
+  render();
+}
+
+function checkWinCondition() {
+  const winningState = [...Array(15).keys()].map(x => x + 1).concat([null]);
+  return state.every((val, idx) => val === winningState[idx]);
+}
+
+function checkWin() {
+  if (checkWinCondition()) {
+    isPlaying = false;
+    messageEl.textContent = 'おめでとう！クリア！';
+  }
+}
+
+shuffleBtn.addEventListener('click', shuffle);
+
+// 初期化
+shuffle();
+</script>
+
+</body>
+</html>

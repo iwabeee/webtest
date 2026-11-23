@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ブロックくずし</title>
+<style>
+  html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; height: 100%; background: #1b2a4a; font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif; color: #fff; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  h1 { margin: 6px 0; font-size: 26px; letter-spacing: 2px; }
+  #wrap { position: relative; width: min(96vw, calc(100vh - 150px), 720px); }
+  canvas { width: 100%; display: block; background: linear-gradient(#25376a, #101a38); border: 4px solid #ffd54a; border-radius: 12px; touch-action: none; }
+  #help { margin: 8px 0 0; font-size: 14px; opacity: .85; }
+  .btns { margin-top: 6px; }
+  button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 10px; border: 0; background: #ffd54a; color: #333; cursor: pointer; margin: 0 4px; }
+  button:hover { background: #ffe27d; }
+</style>
+</head>
+<body>
+<h1>🧱 ブロックくずし</h1>
+<div id="wrap"><canvas id="c" width="640" height="640"></canvas></div>
+<p id="help">ゆびで ドラッグ／マウス／←→キー　でバーをうごかす　タップ or クリック or スペースでスタート</p>
+<div class="btns"><button id="pz">⏸ ひとやすみ</button><button id="snd">🔊 おと：ON</button><button id="rst">はじめから</button></div>
+
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const COLORS = ['#ff5d6c', '#ff9f43', '#ffd54a', '#6ee06e', '#4fc3f7', '#b388ff'];
+let soundOn = true, audio = null;
+
+function beep(freq, dur = 0.08, type = 'square', vol = 0.06) {
+  if (!soundOn) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = freq; g.gain.value = vol;
+    o.connect(g); g.connect(audio.destination);
+    o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + dur);
+    o.stop(audio.currentTime + dur);
+  } catch (e) {}
+}
+
+let state, level, score, lives, best = 0;
+try { best = +localStorage.getItem('breakout-best') || 0; } catch (e) {}
+let paddle, ball, bricks, particles, items, msgTimer = 0, msg = '';
+const KEYS = {};
+
+function makeBricks(lv) {
+  const rows = Math.min(3 + lv, 8), cols = 10;
+  const bw = (W - 40) / cols, bh = 22, arr = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    // レベル2以降は、ところどころ空きをつくる
+    if (lv >= 2 && (r + c * (lv % 3 + 1)) % 7 === 0) continue;
+    arr.push({ x: 20 + c * bw, y: 50 + r * (bh + 4), w: bw - 4, h: bh, col: COLORS[r % COLORS.length],
+               hp: (lv >= 3 && r === 0) ? 2 : 1 });
+  }
+  return arr;
+}
+
+const TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+const PADDLE_BOTTOM = TOUCH ? 130 : 30;   // バーの下の余白(px)
+
+function resetBall() {
+  ball = { x: paddle.x + paddle.w / 2, y: paddle.y - 9, r: 8, vx: 0, vy: 0, stuck: true };
+}
+
+function newGame() {
+  level = 1; score = 0; lives = 3;
+  paddle = { w: 100, h: 14, x: W / 2 - 50, y: H - PADDLE_BOTTOM };
+  bricks = makeBricks(level); particles = []; items = [];
+  resetBall(); state = 'ready';
+}
+
+function speed() { return 2.8 + level * 0.3; }
+
+function launch() {
+  if (state === 'ready') state = 'play';
+  if (ball.stuck) {
+    ball.stuck = false;
+    const a = (-60 - Math.random() * 60) * Math.PI / 180;
+    ball.vx = Math.cos(a) * speed(); ball.vy = Math.sin(a) * speed();
+    beep(520);
+  }
+}
+
+function burst(x, y, col) {
+  for (let i = 0; i < 10; i++) particles.push({ x, y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, life: 30, col });
+}
+
+function flash(t) { msg = t; msgTimer = 90; }
+
+function update() {
+  // バーの移動（キー）
+  if (KEYS.ArrowLeft) paddle.x -= 8;
+  if (KEYS.ArrowRight) paddle.x += 8;
+  paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+
+  if (state !== 'play' && state !== 'ready') return;
+  if (ball.stuck) { ball.x = paddle.x + paddle.w / 2; ball.y = paddle.y - ball.r - 1; return; }
+
+  ball.x += ball.vx; ball.y += ball.vy;
+  if (ball.x < ball.r) { ball.x = ball.r; ball.vx *= -1; beep(300, .04); }
+  if (ball.x > W - ball.r) { ball.x = W - ball.r; ball.vx *= -1; beep(300, .04); }
+  if (ball.y < ball.r) { ball.y = ball.r; ball.vy *= -1; beep(300, .04); }
+
+  // バーにあたった
+  if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+      ball.x >= paddle.x - 4 && ball.x <= paddle.x + paddle.w + 4) {
+    const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2); // -1〜1
+    const ang = (-90 + hit * 60) * Math.PI / 180;
+    const sp = Math.min(speed() + 0.5, 9);
+    ball.vx = Math.cos(ang) * sp; ball.vy = Math.sin(ang) * sp;
+    ball.y = paddle.y - ball.r;
+    beep(440, .06);
+  }
+
+  // ブロックにあたった
+  for (const b of bricks) {
+    if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+      const ox = Math.min(ball.x + ball.r - b.x, b.x + b.w - (ball.x - ball.r));
+      const oy = Math.min(ball.y + ball.r - b.y, b.y + b.h - (ball.y - ball.r));
+      if (ox < oy) ball.vx *= -1; else ball.vy *= -1;
+      b.hp--;
+      if (b.hp <= 0) {
+        b.dead = true; score += 10 * level; burst(b.x + b.w / 2, b.y + b.h / 2, b.col);
+        if (Math.random() < 0.12) items.push({ x: b.x + b.w / 2, y: b.y, vy: 2 });
+        beep(660 + Math.random() * 200, .07);
+      } else beep(500, .05);
+      break;
+    }
+  }
+  bricks = bricks.filter(b => !b.dead);
+
+  // アイテム（おおきいバー）
+  for (const it of items) {
+    it.y += it.vy;
+    if (it.y > paddle.y && it.y < paddle.y + paddle.h + 10 && it.x > paddle.x && it.x < paddle.x + paddle.w) {
+      it.got = true; paddle.w = Math.min(paddle.w + 30, 180); flash('バーがおおきくなった！'); beep(880, .15, 'triangle', .08);
+    }
+    if (it.y > H) it.got = true;
+  }
+  items = items.filter(i => !i.got);
+
+  // ボールがおちた
+  if (ball.y > H + 20) {
+    lives--; beep(150, .3, 'sawtooth');
+    paddle.w = 100;
+    if (lives <= 0) {
+      state = 'over';
+      if (score > best) { best = score; try { localStorage.setItem('breakout-best', best); } catch (e) {} }
+    } else { resetBall(); state = 'ready'; }
+  }
+
+  // ぜんぶ消した
+  if (bricks.length === 0) {
+    level++; state = 'clear'; beep(784, .3, 'triangle', .08);
+    setTimeout(() => { if (state === 'clear') { bricks = makeBricks(level); items = []; paddle.w = 100; resetBall(); state = 'ready'; } }, 1800);
+  }
+}
+
+function drawBrick(b) {
+  ctx.fillStyle = b.col; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 5); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(b.x + 3, b.y + 3, b.w - 6, 5);
+  if (b.hp > 1) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 5); ctx.stroke(); }
+}
+
+function center(text, y, size, col = '#fff') {
+  ctx.fillStyle = col; ctx.font = `bold ${size}px sans-serif`; ctx.textAlign = 'center'; ctx.fillText(text, W / 2, y);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  bricks.forEach(drawBrick);
+  // バー
+  ctx.fillStyle = '#4fc3f7'; ctx.beginPath(); ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7); ctx.fill();
+  // ボール
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, 7); ctx.fill();
+  // アイテム
+  for (const it of items) { ctx.fillStyle = '#6ee06e'; ctx.beginPath(); ctx.arc(it.x, it.y, 10, 0, 7); ctx.fill(); ctx.fillStyle = '#134'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('大', it.x, it.y + 5); }
+  // パーティクル
+  for (const p of particles) { p.x += p.vx; p.y += p.vy; p.life--; ctx.globalAlpha = Math.max(p.life / 30, 0); ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, 4, 4); }
+  ctx.globalAlpha = 1; particles = particles.filter(p => p.life > 0);
+
+  // ひょうじ
+  ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('スコア ' + score, 14, 28);
+  ctx.textAlign = 'center'; ctx.fillText('レベル ' + level, W / 2, 28);
+  ctx.textAlign = 'right'; ctx.fillText('♥'.repeat(Math.max(lives, 0)) + '　ベスト ' + best, W - 14, 28);
+
+  if (PADDLE_BOTTOM > 60 && (state === 'ready' || state === 'play')) {
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('👆 ここに ゆびを おいて よこに うごかそう', W / 2, H - 40);
+  }
+  if (msgTimer > 0) { msgTimer--; center(msg, H / 2 + 60, 22, '#ffd54a'); }
+  if (state === 'ready') center(level === 1 && score === 0 ? 'タップ か クリック で スタート！' : 'タップでつづける', H / 2 + 90, 22, '#ffd54a');
+  if (state === 'pause') { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(0, 0, W, H); center('ひとやすみ（ボタンかPでつづける）', H / 2, 30); }
+  if (state === 'clear') { center('🎉 レベルクリア！', H / 2, 40, '#ffd54a'); }
+  if (state === 'over') {
+    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, W, H);
+    center('ゲームオーバー', H / 2 - 20, 40, '#ff5d6c');
+    center('スコア ' + score, H / 2 + 20, 24);
+    center('タップでもういちど！', H / 2 + 60, 22, '#ffd54a');
+  }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+function movePaddleTo(clientX) {
+  const rect = cv.getBoundingClientRect();
+  paddle.x = (clientX - rect.left) / rect.width * W - paddle.w / 2;
+  paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+}
+function action() {
+  if (state === 'over') { newGame(); return; }
+  if (state === 'ready' || state === 'play') launch();
+}
+function togglePause() {
+  if (state === 'play') state = 'pause'; else if (state === 'pause') state = 'play';
+}
+
+cv.addEventListener('mousemove', e => movePaddleTo(e.clientX));
+cv.addEventListener('mousedown', action);
+cv.addEventListener('touchmove', e => { e.preventDefault(); movePaddleTo(e.touches[0].clientX); }, { passive: false });
+cv.addEventListener('touchstart', e => { e.preventDefault(); movePaddleTo(e.touches[0].clientX); action(); }, { passive: false });
+window.addEventListener('keydown', e => {
+  KEYS[e.key] = true;
+  if (e.key === ' ') { e.preventDefault(); action(); }
+  if (e.key === 'p' || e.key === 'P') togglePause();
+  if (e.key.startsWith('Arrow')) e.preventDefault();
+});
+window.addEventListener('keyup', e => { KEYS[e.key] = false; });
+document.getElementById('pz').onclick = () => togglePause();
+document.getElementById('rst').onclick = () => newGame();
+document.getElementById('snd').onclick = e => { soundOn = !soundOn; e.target.textContent = soundOn ? '🔊 おと：ON' : '🔇 おと：OFF'; };
+
+newGame(); loop();
+</script>
+</body>
+</html>
