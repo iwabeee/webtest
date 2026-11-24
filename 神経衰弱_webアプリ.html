@@ -6,182 +6,159 @@
     <title>神経衰弱ゲーム</title>
     <style>
         :root {
-            --bg-color: #f0f2f5;
-            --card-back: #4a90e2;
-            --card-front: #ffffff;
-            --text-color: #333333;
-            --primary: #4a90e2;
-            --primary-hover: #357abd;
-            --accent: #e74c3c;
+            --card-size: min(13vw, 55px);
+            --card-margin: min(1.5vw, 6px);
         }
-
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
             margin: 0;
             padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            user-select: none;
         }
-
         h1 {
-            margin: 10px 0;
+            margin: 5px 0 10px 0;
             font-size: 1.5rem;
-            text-align: center;
+            color: #2c3e50;
         }
-
-        .menu-screen, .game-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 400px;
+        .mode-select {
+            margin-bottom: 10px;
         }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .btn {
-            background-color: var(--primary);
+        .mode-select button {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background-color: #3498db;
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            margin: 8px;
-            width: 80%;
-            max-width: 250px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background-color 0.2s, transform 0.1s;
+            border-radius: 4px;
+            margin: 0 4px;
+            transition: background-color 0.2s;
         }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
+        .mode-select button.active {
+            background-color: #2980b9;
             font-weight: bold;
-            padding: 0 5px;
-            box-sizing: border-box;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
-
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
         .board {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            width: 100%;
-            aspect-ratio: 1;
+            grid-template-columns: repeat(6, var(--card-size));
+            gap: var(--card-margin);
             margin-bottom: 15px;
         }
-
         .card {
-            background-color: var(--card-back);
-            border-radius: 8px;
+            width: var(--card-size);
+            height: var(--card-size);
+            background-color: #34495e;
+            border-radius: 6px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 2.2rem;
+            font-size: calc(var(--card-size) * 0.55);
             cursor: pointer;
-            user-select: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
             transition: transform 0.3s, background-color 0.3s;
-            aspect-ratio: 1;
+            transform-style: preserve-3d;
         }
-
-        .card.flipped, .card.matched {
-            background-color: var(--card-front);
+        .card.flipped {
+            background-color: white;
             transform: rotateY(180deg);
         }
-
         .card.matched {
+            background-color: #e8f8f5;
             opacity: 0.7;
             cursor: default;
         }
-
         .controls {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            justify-content: center;
             margin-bottom: 15px;
         }
-
-        .controls .btn {
-            width: auto;
+        .controls button {
             padding: 8px 16px;
-            font-size: 0.9rem;
-            margin: 0;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
+        .controls button:hover {
+            background-color: #27ae60;
+        }
         .rules {
+            max-width: 400px;
+            width: 100%;
             background: white;
             padding: 12px 15px;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
+            border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             font-size: 0.85rem;
             line-height: 1.4;
-            margin-top: auto;
+            box-sizing: border-box;
+            margin-bottom: 20px;
         }
-
-        .rules h3 {
-            margin: 0 0 8px 0;
-            font-size: 0.95rem;
-            border-bottom: 2px solid var(--primary);
+        .rules h2 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
             padding-bottom: 4px;
         }
-
         .rules ul {
-            margin: 0;
             padding-left: 20px;
+            margin: 5px 0;
         }
-
-        .rules li {
-            margin-bottom: 4px;
-        }
-
-        /* モーダル */
         .modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background-color: rgba(0,0,0,0.5);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 10;
+            display: none;
         }
-
         .modal-content {
             background: white;
-            padding: 25px;
-            border-radius: 12px;
+            padding: 20px;
+            border-radius: 8px;
             text-align: center;
-            width: 80%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             max-width: 300px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 90%;
         }
-
         .modal-content h2 {
             margin-top: 0;
-            color: var(--primary);
+            color: #2c3e50;
+        }
+        .modal-content button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            font-size: 1rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -189,253 +166,223 @@
 
     <h1>神経衰弱</h1>
 
-    <!-- メニュー画面 -->
-    <div id="menuScreen" class="menu-screen">
-        <p>モードを選んでください</p>
-        <button class="btn" onclick="startGame(1)">1人で遊ぶ</button>
-        <button class="btn" onclick="startGame(2)">2人で対戦</button>
+    <div class="mode-select">
+        <button id="btn-solo" onclick="setMode('solo')" class="active">1人で遊ぶ</button>
+        <button id="btn-duo" onclick="setMode('duo')">2人で対戦</button>
     </div>
 
-    <!-- ゲーム画面 -->
-    <div id="gameScreen" class="game-screen hidden">
-        <div class="status-bar" id="statusBar">
-            <!-- 動的生成 -->
-        </div>
-
-        <div class="board" id="board">
-            <!-- 動的生成 -->
-        </div>
-
-        <div class="controls">
-            <button class="btn" onclick="resetGame()">もう一度</button>
-            <button class="btn" onclick="returnToMenu()" style="background-color: #7f8c8d;">メニューへ</button>
-        </div>
+    <div class="info-panel" id="info-panel">
+        <!-- 動的に更新 -->
     </div>
 
-    <!-- ルール説明 -->
+    <div class="board" id="board"></div>
+
+    <div class="controls">
+        <button onclick="startGame()">もう一度</button>
+    </div>
+
     <div class="rules">
-        <h3>あそびかた・ルール</h3>
+        <h2>あそびかた・ルール</h2>
         <ul>
-            <li>4×4（計16枚）のカードを使った神経衰弱です。</li>
-            <li><strong>1人モード:</strong> すべてのペアをそろえるまでの手数とタイムを競います。最初のカードをめくるとタイマーが始まります。</li>
-            <li><strong>2人モード:</strong> プレイヤー1と2が交互にカードを2枚めくります。ペアをそろえると得点になり、続けてもう一度めくれます。外したら相手の番になります。最後に多い方の勝ちです。</li>
+            <li>6×6のボードに36枚（18ペア）のカードが並びます。</li>
+            <li>カードをタップしてめくり、同じ絵柄のペアを揃えるゲームです。</li>
+            <li>2枚めくって違う絵柄だった場合、1秒後に裏に戻ります（この間は他のカードをめくれません）。</li>
+            <li><strong>1人モード:</strong> すべてのペアを揃えるまでの「手数」と「タイム」を競います。最初のカードをめくるとタイマーが始まります。</li>
+            <li><strong>2人対戦モード:</strong> 交互にカードをめくり、ペアを揃えると得点（1ペア）になり、もう一度自分の番が続きます。外すと相手の番になります。最終的に多くのペアを取った人の勝ちです。</li>
         </ul>
     </div>
 
-    <!-- 結果モーダル -->
-    <div id="resultModal" class="modal hidden">
+    <div class="modal" id="result-modal">
         <div class="modal-content">
-            <h2 id="resultTitle">おめでとう！クリア！</h2>
-            <p id="resultText">手数: 10手<br>時間: 30秒</p>
-            <button class="btn" onclick="resetGame(); closeModal();">もう一度遊ぶ</button>
-            <button class="btn" onclick="returnToMenu(); closeModal();" style="background-color: #7f8c8d; margin-top: 5px;">メニューへ</button>
+            <h2 id="modal-title">おめでとう！クリア！</h2>
+            <p id="modal-text">手数: 15 / 時間: 30秒</p>
+            <button onclick="closeModalAndRestart()">もう一度遊ぶ</button>
         </div>
     </div>
 
     <script>
-        const symbols = ['🍎', '🍌', '🍇', '🍓', '🍊', '🍉', '🍑', '🍒'];
-        let currentMode = 1;
-        let cards = [];
-        let firstCard = null;
-        let secondCard = null;
-        let lockBoard = false;
+        const symbols = ['🍎', '🍌', '🍇', '🍓', '🍊', '🍉', '🍑', '🍒', '🍋', '🍐', '🥝', '🍍', '🥭', '🍏', '🍈', '🍩', '🍦', '🍫'];
         
-        // 1人用変数
+        let mode = 'solo'; // 'solo' or 'duo'
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let isLocked = false;
+        
+        // Solo stats
         let moves = 0;
-        let matches = 0;
         let timer = null;
         let seconds = 0;
-        let timerStarted = false;
+        let gameStarted = false;
 
-        // 2人用変数
-        let currentPlayer = 1;
-        let scores = { 1: 0, 2: 0 };
+        // Duo stats
+        let currentTurn = 1; // 1 or 2
+        let scores = [0, 0]; // [player1Pairs, player2Pairs]
 
-        function startGame(mode) {
-            currentMode = mode;
-            document.getElementById('menuScreen').classList.add('hidden');
-            document.getElementById('gameScreen').classList.remove('hidden');
-            resetGame();
+        function setMode(selectedMode) {
+            mode = selectedMode;
+            document.getElementById('btn-solo').classList.toggle('active', mode === 'solo');
+            document.getElementById('btn-duo').classList.toggle('active', mode === 'duo');
+            startGame();
         }
 
-        function returnToMenu() {
-            stopTimer();
-            document.getElementById('gameScreen').classList.add('hidden');
-            document.getElementById('menuScreen').classList.remove('hidden');
-            closeModal();
-        }
-
-        function resetGame() {
-            stopTimer();
-            timerStarted = false;
-            seconds = 0;
+        function startGame() {
+            // Reset state
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            isLocked = false;
             moves = 0;
-            matches = 0;
-            currentPlayer = 1;
-            scores = { 1: 0, 2: 0 };
-            firstCard = null;
-            secondCard = null;
-            lockBoard = false;
-            closeModal();
-
-            // カードのシャッフル
-            const cardSymbols = [...symbols, ...symbols];
-            cards = cardSymbols
-                .sort(() => Math.random() - 0.5)
-                .map((symbol, index) => ({
-                    id: index,
-                    symbol: symbol,
-                    isFlipped: false,
-                    isMatched: false
-                }));
-
-            renderStatusBar();
-            renderBoard();
-        }
-
-        function startTimer() {
-            if (currentMode === 1 && !timerStarted) {
-                timerStarted = true;
-                timer = setInterval(() => {
-                    seconds++;
-                    renderStatusBar();
-                }, 1000);
-            }
-        }
-
-        function stopTimer() {
+            seconds = 0;
+            gameStarted = false;
             clearInterval(timer);
-        }
+            currentTurn = 1;
+            scores = [0, 0];
+            
+            document.getElementById('result-modal').style.display = 'none';
 
-        function renderStatusBar() {
-            const bar = document.getElementById('statusBar');
-            if (currentMode === 1) {
-                bar.innerHTML = `
-                    <span>手数: ${moves}</span>
-                    <span>ペア: ${matches}/8</span>
-                    <span>時間: ${seconds}秒</span>
-                `;
-            } else {
-                bar.innerHTML = `
-                    <span>P1ペア: ${scores[1]} | P2ペア: ${scores[2]}</span>
-                    <span style="color: var(--accent);">P${currentPlayer} の番</span>
-                `;
-            }
+            // Create deck
+            let deck = [...symbols, ...symbols];
+            // Shuffle
+            deck.sort(() => Math.random() - 0.5);
+
+            cards = deck.map((symbol, index) => ({
+                id: index,
+                symbol: symbol,
+                isFlipped: false,
+                isMatched: false
+            }));
+
+            renderBoard();
+            updateInfoPanel();
         }
 
         function renderBoard() {
             const board = document.getElementById('board');
             board.innerHTML = '';
-            cards.forEach(card => {
-                const el = document.createElement('div');
-                el.classList.add('card');
-                if (card.isFlipped || card.isMatched) {
-                    el.classList.add(card.isMatched ? 'matched' : 'flipped');
-                    el.textContent = card.symbol;
-                } else {
-                    el.textContent = '？';
-                }
-                el.addEventListener('click', () => handleCardClick(card.id));
-                board.appendChild(el);
+            cards.forEach((card, index) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = `card ${card.isFlipped ? 'flipped' : ''} ${card.isMatched ? 'matched' : ''}`;
+                cardEl.innerHTML = card.isFlipped || card.isMatched ? card.symbol : '?';
+                cardEl.onclick = () => flipCard(index);
+                board.appendChild(cardEl);
             });
         }
 
-        function handleCardClick(id) {
-            if (lockBoard) return;
-            const clickedCard = cards.find(c => c.id === id);
-
-            if (clickedCard.isFlipped || clickedCard.isMatched) return;
-
-            startTimer();
-
-            clickedCard.isFlipped = true;
-            renderBoard();
-
-            if (!firstCard) {
-                firstCard = clickedCard;
-                return;
+        function updateInfoPanel() {
+            const panel = document.getElementById('info-panel');
+            if (mode === 'solo') {
+                panel.innerHTML = `
+                    <div>手数: ${moves}</div>
+                    <div>タイム: ${seconds}秒</div>
+                    <div>ペア: ${matchedPairs}/18</div>
+                `;
+            } else {
+                panel.innerHTML = `
+                    <div style="font-weight: ${currentTurn === 1 ? 'bold' : 'normal'}; color: ${currentTurn === 1 ? '#e74c3c' : '#333'}">P1の番 (${scores[0]})</div>
+                    <div style="font-weight: ${currentTurn === 2 ? 'bold' : 'normal'}; color: ${currentTurn === 2 ? '#3498db' : '#333'}">P2の番 (${scores[1]})</div>
+                    <div>残りペア: ${18 - matchedPairs}</div>
+                `;
             }
-
-            secondCard = clickedCard;
-            lockBoard = true;
-
-            if (currentMode === 1) {
-                moves++;
-            }
-
-            checkForMatch();
         }
 
-        function checkForMatch() {
-            const isMatch = firstCard.symbol === secondCard.symbol;
-
-            if (isMatch) {
-                firstCard.isMatched = true;
-                secondCard.isMatched = true;
-                matches++;
-
-                if (currentMode === 2) {
-                    scores[currentPlayer]++;
-                }
-
-                resetTurn(true);
-                checkGameOver();
-            } else {
-                setTimeout(() => {
-                    firstCard.isFlipped = false;
-                    secondCard.isFlipped = false;
-                    
-                    if (currentMode === 2) {
-                        currentPlayer = currentPlayer === 1 ? 2 : 1;
-                    }
-
-                    resetTurn(false);
+        function startTimerIfNeeded() {
+            if (mode === 'solo' && !gameStarted) {
+                gameStarted = true;
+                timer = setInterval(() => {
+                    seconds++;
+                    updateInfoPanel();
                 }, 1000);
             }
         }
 
-        function resetTurn(matched) {
-            firstCard = null;
-            secondCard = null;
-            lockBoard = false;
-            renderStatusBar();
+        function flipCard(index) {
+            if (isLocked) return;
+            let card = cards[index];
+            if (card.isFlipped || card.isMatched) return;
+
+            startTimerIfNeeded();
+
+            card.isFlipped = true;
+            flippedCards.push(index);
             renderBoard();
-        }
 
-        function checkGameOver() {
-            if (matches === 8) {
-                stopTimer();
-                setTimeout(() => {
-                    showResult();
-                }, 400);
-            }
-        }
-
-        function showResult() {
-            const modal = document.getElementById('resultModal');
-            const title = document.getElementById('resultTitle');
-            const text = document.getElementById('resultText');
-
-            if (currentMode === 1) {
-                title.textContent = 'おめでとう！クリア！';
-                text.innerHTML = `手数: ${moves}手<br>経過時間: ${seconds}秒`;
-            } else {
-                if (scores[1] > scores[2]) {
-                    title.textContent = 'プレイヤー1の勝ち！';
-                } else if (scores[2] > scores[1]) {
-                    title.textContent = 'プレイヤー2の勝ち！';
-                } else {
-                    title.textContent = '引き分け！';
+            if (flippedCards.length === 2) {
+                isLocked = true;
+                if (mode === 'solo') {
+                    moves++;
                 }
-                text.innerHTML = `プレイヤー1: ${scores[1]} ペア<br>プレイヤー2: ${scores[2]} ペア`;
+                checkMatch();
             }
-
-            modal.classList.remove('hidden');
+            updateInfoPanel();
         }
 
-        function closeModal() {
-            document.getElementById('resultModal').classList.add('hidden');
+        function checkMatch() {
+            const [idx1, idx2] = flippedCards;
+            const card1 = cards[idx1];
+            const card2 = cards[idx2];
+
+            if (card1.symbol === card2.symbol) {
+                card1.isMatched = true;
+                card2.isMatched = true;
+                matchedPairs++;
+                flippedCards = [];
+                isLocked = false;
+
+                if (mode === 'duo') {
+                    scores[currentTurn - 1]++;
+                }
+
+                renderBoard();
+                updateInfoPanel();
+
+                if (matchedPairs === 18) {
+                    endGame();
+                }
+            } else {
+                setTimeout(() => {
+                    card1.isFlipped = false;
+                    card2.isFlipped = false;
+                    flippedCards = [];
+                    isLocked = false;
+
+                    if (mode === 'duo') {
+                        currentTurn = currentTurn === 1 ? 2 : 1;
+                    }
+
+                    renderBoard();
+                    updateInfoPanel();
+                }, 1000);
+            }
         }
+
+        function endGame() {
+            if (mode === 'solo') {
+                clearInterval(timer);
+                document.getElementById('modal-title').innerText = 'おめでとう！クリア！';
+                document.getElementById('modal-text').innerHTML = `手数: ${moves}回<br>時間: ${seconds}秒`;
+            } else {
+                document.getElementById('modal-title').innerText = 'ゲーム終了！';
+                let resultText = `プレイヤー1: ${scores[0]}ペア<br>プレイヤー2: ${scores[1]}ペア<br><br>`;
+                if (scores[0] > scores[1]) {
+                    resultText += '<strong>プレイヤー1の勝ち！</strong>';
+                } else if (scores[1] > scores[0]) {
+                    resultText += '<strong>プレイヤー2の勝ち！</strong>';
+                } else {
+                    resultText += '<strong>引き分け！</strong>';
+                }
+                document.getElementById('modal-text').innerHTML = resultText;
+            }
+            document.getElementById('result-modal').style.display = 'flex';
+        }
+
+        function closeModalAndRestart() {
+            document.getElementById('result-modal').style.display = 'none';
+            startGame();
+        }
+
+        // 初期化実行
+        startGame();
     </script>
 </body>
 </html>
