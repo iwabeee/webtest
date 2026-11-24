@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神経衰弱ゲーム</title>
+    <style>
+        :root {
+            --card-size: 70px;
+            --card-gap: 10px;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin: 10px 0 20px 0;
+            font-size: 1.8rem;
+            color: #2c3e50;
+        }
+
+        .status-panel {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .status-item span {
+            font-weight: bold;
+            color: #2980b9;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, var(--card-size));
+            grid-template-rows: repeat(4, var(--card-size));
+            gap: var(--card-gap);
+            margin-bottom: 20px;
+        }
+
+        .card {
+            width: var(--card-size);
+            height: var(--card-size);
+            background-color: #3498db;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            user-select: none;
+            transition: transform 0.3s, background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card:hover {
+            filter: brightness(1.1);
+        }
+
+        .card.flipped {
+            background-color: #fff;
+            border: 2px solid #3498db;
+            cursor: default;
+        }
+
+        .card.matched {
+            background-color: #e2e8f0;
+            border: 2px solid #cbd5e1;
+            cursor: default;
+            opacity: 0.7;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+        }
+
+        button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #27ae60;
+        }
+
+        .rules {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            max-width: 350px;
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        .rules h2 {
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .rules ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #555;
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-width: 300px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #e74c3c;
+        }
+
+        /* レスポンシブ調整 */
+        @media (max-width: 400px) {
+            :root {
+                --card-size: 60px;
+                --card-gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>神経衰弱</h1>
+
+    <div class="status-panel">
+        <div class="status-item">手数: <span id="turns">0</span></div>
+        <div class="status-item">時間: <span id="timer">0秒</span></div>
+        <div class="status-item">ペア: <span id="pairs">0/8</span></div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="controls">
+        <button id="restartBtn">もう一度</button>
+    </div>
+
+    <div class="rules">
+        <h2>あそびかた・ルール</h2>
+        <ul>
+            <div></div>
+            <li>カードは全部で16枚（8種類×各2枚）あります。</li>
+            <li>カードを2枚めくって、同じ絵柄ならペア成立です。</li>
+            <li>違う絵柄の場合は、1秒後に自動で裏に戻ります。</li>
+            <li>すべてのペア（8組）を揃えるとクリアです。</li>
+        </ul>
+    </div>
+
+    <div class="modal" id="clearModal">
+        <div class="modal-content">
+            <h2>おめでとう！クリア！</h2>
+            <p>手数: <span id="resultTurns">0</span> 手</p>
+            <p>時間: <span id="resultTime">0</span> 秒</p>
+            <button id="modalRestartBtn">もう一度あそぶ</button>
+        </div>
+    </div>
+
+    <script>
+        const symbols = ['🍎', '🍌', '🍇', '🍓', '🍊', '🍉', '🍑', '🍒'];
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let turns = 0;
+        let seconds = 0;
+        let timerInterval = null;
+        let isStarted = false;
+        let isLocked = false;
+
+        const boardElement = document.getElementById('board');
+        const turnsElement = document.getElementById('turns');
+        const timerElement = document.getElementById('timer');
+        const pairsElement = document.getElementById('pairs');
+        const restartBtn = document.getElementById('restartBtn');
+        const clearModal = document.getElementById('clearModal');
+        const resultTurns = document.getElementById('resultTurns');
+        const resultTime = document.getElementById('resultTime');
+        const modalRestartBtn = document.getElementById('modalRestartBtn');
+
+        function initGame() {
+            // リセット
+            boardElement.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+            turns = 0;
+            seconds = 0;
+            isStarted = false;
+            isLocked = false;
+            clearInterval(timerInterval);
+            timerInterval = null;
+
+            turnsElement.textContent = turns;
+            timerElement.textContent = `${seconds}秒`;
+            pairsElement.textContent = `${matchedPairs}/8`;
+            clearModal.style.display = 'none';
+
+            // カードの作成とシャッフル
+            const cardValues = [...symbols, ...symbols];
+            cardValues.sort(() => Math.random() - 0.5);
+
+            cards = cardValues.map((symbol, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.symbol = symbol;
+                card.dataset.index = index;
+                card.textContent = '?';
+                card.addEventListener('click', () => handleCardClick(card));
+                boardElement.appendChild(card);
+                return card;
+            });
+        }
+
+        function startTimer() {
+            if (!isStarted) {
+                isStarted = true;
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    timerElement.textContent = `${seconds}秒`;
+                }, 1000);
+            }
+        }
+
+        function handleCardClick(card) {
+            if (isLocked) return;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            startTimer();
+
+            // カードをめくる
+            card.classList.add('flipped');
+            card.textContent = card.dataset.symbol;
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                turns++;
+                turnsElement.textContent = turns;
+                isLocked = true;
+
+                const [card1, card2] = flippedCards;
+
+                if (card1.dataset.symbol === card2.dataset.symbol) {
+                    // マッチした場合
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    pairsElement.textContent = `${matchedPairs}/8`;
+                    flippedCards = [];
+                    isLocked = false;
+
+                    // クリア判定
+                    if (matchedPairs === 8) {
+                        clearInterval(timerInterval);
+                        setTimeout(() => {
+                            resultTurns.textContent = turns;
+                            resultTime.textContent = seconds;
+                            clearModal.style.display = 'flex';
+                        }, 300);
+                    }
+                } else {
+                    // マッチしなかった場合
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card1.textContent = '?';
+                        card2.classList.remove('flipped');
+                        card2.textContent = '?';
+                        flippedCards = [];
+                        isLocked = false;
+                    }, 1000);
+                }
+            }
+        }
+
+        restartBtn.addEventListener('click', initGame);
+        modalRestartBtn.addEventListener('click', initGame);
+
+        // 初期化実行
+        initGame();
+    </script>
+</body>
+</html>
