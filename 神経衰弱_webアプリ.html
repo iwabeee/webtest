@@ -6,165 +6,182 @@
     <title>神経衰弱ゲーム</title>
     <style>
         :root {
-            --card-size: 70px;
-            --card-gap: 10px;
+            --bg-color: #f0f2f5;
+            --card-back: #4a90e2;
+            --card-front: #ffffff;
+            --text-color: #333333;
+            --primary: #4a90e2;
+            --primary-hover: #357abd;
+            --accent: #e74c3c;
         }
 
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f0f8ff;
-            color: #333;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
             min-height: 100vh;
-            margin: 0;
-            padding: 20px;
         }
 
         h1 {
-            margin: 10px 0 20px 0;
-            font-size: 1.8rem;
-            color: #2c3e50;
+            margin: 10px 0;
+            font-size: 1.5rem;
+            text-align: center;
         }
 
-        .status-panel {
+        .menu-screen, .game-screen {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            font-size: 1rem;
-            background: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
         }
 
-        .status-item span {
+        .hidden {
+            display: none !important;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+            width: 80%;
+            max-width: 250px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
             font-weight: bold;
-            color: #2980b9;
+            padding: 0 5px;
+            box-sizing: border-box;
         }
 
         .board {
             display: grid;
-            grid-template-columns: repeat(4, var(--card-size));
-            grid-template-rows: repeat(4, var(--card-size));
-            gap: var(--card-gap);
-            margin-bottom: 20px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+            aspect-ratio: 1;
+            margin-bottom: 15px;
         }
 
         .card {
-            width: var(--card-size);
-            height: var(--card-size);
-            background-color: #3498db;
+            background-color: var(--card-back);
             border-radius: 8px;
-            cursor: pointer;
             display: flex;
-            align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            align-items: center;
+            font-size: 2.2rem;
+            cursor: pointer;
             user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
             transition: transform 0.3s, background-color 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            aspect-ratio: 1;
         }
 
-        .card:hover {
-            filter: brightness(1.1);
-        }
-
-        .card.flipped {
-            background-color: #fff;
-            border: 2px solid #3498db;
-            cursor: default;
+        .card.flipped, .card.matched {
+            background-color: var(--card-front);
+            transform: rotateY(180deg);
         }
 
         .card.matched {
-            background-color: #e2e8f0;
-            border: 2px solid #cbd5e1;
-            cursor: default;
             opacity: 0.7;
+            cursor: default;
         }
 
         .controls {
-            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 15px;
         }
 
-        button {
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: #27ae60;
+        .controls .btn {
+            width: auto;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            margin: 0;
         }
 
         .rules {
-            background: #fff;
-            padding: 15px 20px;
+            background: white;
+            padding: 12px 15px;
             border-radius: 8px;
-            max-width: 350px;
             width: 100%;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin-top: auto;
         }
 
-        .rules h2 {
-            font-size: 1.1rem;
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #2c3e50;
+        .rules h3 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 4px;
         }
 
         .rules ul {
             margin: 0;
             padding-left: 20px;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: #555;
+        }
+
+        .rules li {
+            margin-bottom: 4px;
         }
 
         /* モーダル */
         .modal {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.5);
-            align-items: center;
+            display: flex;
             justify-content: center;
+            align-items: center;
             z-index: 10;
         }
 
         .modal-content {
             background: white;
-            padding: 30px;
-            border-radius: 10px;
+            padding: 25px;
+            border-radius: 12px;
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 80%;
             max-width: 300px;
-            width: 90%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
         .modal-content h2 {
             margin-top: 0;
-            color: #e74c3c;
-        }
-
-        /* レスポンシブ調整 */
-        @media (max-width: 400px) {
-            :root {
-                --card-size: 60px;
-                --card-gap: 8px;
-            }
+            color: var(--primary);
         }
     </style>
 </head>
@@ -172,157 +189,253 @@
 
     <h1>神経衰弱</h1>
 
-    <div class="status-panel">
-        <div class="status-item">手数: <span id="turns">0</span></div>
-        <div class="status-item">時間: <span id="timer">0秒</span></div>
-        <div class="status-item">ペア: <span id="pairs">0/8</span></div>
+    <!-- メニュー画面 -->
+    <div id="menuScreen" class="menu-screen">
+        <p>モードを選んでください</p>
+        <button class="btn" onclick="startGame(1)">1人で遊ぶ</button>
+        <button class="btn" onclick="startGame(2)">2人で対戦</button>
     </div>
 
-    <div class="board" id="board"></div>
+    <!-- ゲーム画面 -->
+    <div id="gameScreen" class="game-screen hidden">
+        <div class="status-bar" id="statusBar">
+            <!-- 動的生成 -->
+        </div>
 
-    <div class="controls">
-        <button id="restartBtn">もう一度</button>
+        <div class="board" id="board">
+            <!-- 動的生成 -->
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="resetGame()">もう一度</button>
+            <button class="btn" onclick="returnToMenu()" style="background-color: #7f8c8d;">メニューへ</button>
+        </div>
     </div>
 
+    <!-- ルール説明 -->
     <div class="rules">
-        <h2>あそびかた・ルール</h2>
+        <h3>あそびかた・ルール</h3>
         <ul>
-            <div></div>
-            <li>カードは全部で16枚（8種類×各2枚）あります。</li>
-            <li>カードを2枚めくって、同じ絵柄ならペア成立です。</li>
-            <li>違う絵柄の場合は、1秒後に自動で裏に戻ります。</li>
-            <li>すべてのペア（8組）を揃えるとクリアです。</li>
+            <li>4×4（計16枚）のカードを使った神経衰弱です。</li>
+            <li><strong>1人モード:</strong> すべてのペアをそろえるまでの手数とタイムを競います。最初のカードをめくるとタイマーが始まります。</li>
+            <li><strong>2人モード:</strong> プレイヤー1と2が交互にカードを2枚めくります。ペアをそろえると得点になり、続けてもう一度めくれます。外したら相手の番になります。最後に多い方の勝ちです。</li>
         </ul>
     </div>
 
-    <div class="modal" id="clearModal">
+    <!-- 結果モーダル -->
+    <div id="resultModal" class="modal hidden">
         <div class="modal-content">
-            <h2>おめでとう！クリア！</h2>
-            <p>手数: <span id="resultTurns">0</span> 手</p>
-            <p>時間: <span id="resultTime">0</span> 秒</p>
-            <button id="modalRestartBtn">もう一度あそぶ</button>
+            <h2 id="resultTitle">おめでとう！クリア！</h2>
+            <p id="resultText">手数: 10手<br>時間: 30秒</p>
+            <button class="btn" onclick="resetGame(); closeModal();">もう一度遊ぶ</button>
+            <button class="btn" onclick="returnToMenu(); closeModal();" style="background-color: #7f8c8d; margin-top: 5px;">メニューへ</button>
         </div>
     </div>
 
     <script>
         const symbols = ['🍎', '🍌', '🍇', '🍓', '🍊', '🍉', '🍑', '🍒'];
+        let currentMode = 1;
         let cards = [];
-        let flippedCards = [];
-        let matchedPairs = 0;
-        let turns = 0;
+        let firstCard = null;
+        let secondCard = null;
+        let lockBoard = false;
+        
+        // 1人用変数
+        let moves = 0;
+        let matches = 0;
+        let timer = null;
         let seconds = 0;
-        let timerInterval = null;
-        let isStarted = false;
-        let isLocked = false;
+        let timerStarted = false;
 
-        const boardElement = document.getElementById('board');
-        const turnsElement = document.getElementById('turns');
-        const timerElement = document.getElementById('timer');
-        const pairsElement = document.getElementById('pairs');
-        const restartBtn = document.getElementById('restartBtn');
-        const clearModal = document.getElementById('clearModal');
-        const resultTurns = document.getElementById('resultTurns');
-        const resultTime = document.getElementById('resultTime');
-        const modalRestartBtn = document.getElementById('modalRestartBtn');
+        // 2人用変数
+        let currentPlayer = 1;
+        let scores = { 1: 0, 2: 0 };
 
-        function initGame() {
-            // リセット
-            boardElement.innerHTML = '';
-            flippedCards = [];
-            matchedPairs = 0;
-            turns = 0;
+        function startGame(mode) {
+            currentMode = mode;
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            resetGame();
+        }
+
+        function returnToMenu() {
+            stopTimer();
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('menuScreen').classList.remove('hidden');
+            closeModal();
+        }
+
+        function resetGame() {
+            stopTimer();
+            timerStarted = false;
             seconds = 0;
-            isStarted = false;
-            isLocked = false;
-            clearInterval(timerInterval);
-            timerInterval = null;
+            moves = 0;
+            matches = 0;
+            currentPlayer = 1;
+            scores = { 1: 0, 2: 0 };
+            firstCard = null;
+            secondCard = null;
+            lockBoard = false;
+            closeModal();
 
-            turnsElement.textContent = turns;
-            timerElement.textContent = `${seconds}秒`;
-            pairsElement.textContent = `${matchedPairs}/8`;
-            clearModal.style.display = 'none';
+            // カードのシャッフル
+            const cardSymbols = [...symbols, ...symbols];
+            cards = cardSymbols
+                .sort(() => Math.random() - 0.5)
+                .map((symbol, index) => ({
+                    id: index,
+                    symbol: symbol,
+                    isFlipped: false,
+                    isMatched: false
+                }));
 
-            // カードの作成とシャッフル
-            const cardValues = [...symbols, ...symbols];
-            cardValues.sort(() => Math.random() - 0.5);
-
-            cards = cardValues.map((symbol, index) => {
-                const card = document.createElement('div');
-                card.classList.add('card');
-                card.dataset.symbol = symbol;
-                card.dataset.index = index;
-                card.textContent = '?';
-                card.addEventListener('click', () => handleCardClick(card));
-                boardElement.appendChild(card);
-                return card;
-            });
+            renderStatusBar();
+            renderBoard();
         }
 
         function startTimer() {
-            if (!isStarted) {
-                isStarted = true;
-                timerInterval = setInterval(() => {
+            if (currentMode === 1 && !timerStarted) {
+                timerStarted = true;
+                timer = setInterval(() => {
                     seconds++;
-                    timerElement.textContent = `${seconds}秒`;
+                    renderStatusBar();
                 }, 1000);
             }
         }
 
-        function handleCardClick(card) {
-            if (isLocked) return;
-            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+        function stopTimer() {
+            clearInterval(timer);
+        }
 
-            startTimer();
-
-            // カードをめくる
-            card.classList.add('flipped');
-            card.textContent = card.dataset.symbol;
-            flippedCards.push(card);
-
-            if (flippedCards.length === 2) {
-                turns++;
-                turnsElement.textContent = turns;
-                isLocked = true;
-
-                const [card1, card2] = flippedCards;
-
-                if (card1.dataset.symbol === card2.dataset.symbol) {
-                    // マッチした場合
-                    card1.classList.add('matched');
-                    card2.classList.add('matched');
-                    matchedPairs++;
-                    pairsElement.textContent = `${matchedPairs}/8`;
-                    flippedCards = [];
-                    isLocked = false;
-
-                    // クリア判定
-                    if (matchedPairs === 8) {
-                        clearInterval(timerInterval);
-                        setTimeout(() => {
-                            resultTurns.textContent = turns;
-                            resultTime.textContent = seconds;
-                            clearModal.style.display = 'flex';
-                        }, 300);
-                    }
-                } else {
-                    // マッチしなかった場合
-                    setTimeout(() => {
-                        card1.classList.remove('flipped');
-                        card1.textContent = '?';
-                        card2.classList.remove('flipped');
-                        card2.textContent = '?';
-                        flippedCards = [];
-                        isLocked = false;
-                    }, 1000);
-                }
+        function renderStatusBar() {
+            const bar = document.getElementById('statusBar');
+            if (currentMode === 1) {
+                bar.innerHTML = `
+                    <span>手数: ${moves}</span>
+                    <span>ペア: ${matches}/8</span>
+                    <span>時間: ${seconds}秒</span>
+                `;
+            } else {
+                bar.innerHTML = `
+                    <span>P1ペア: ${scores[1]} | P2ペア: ${scores[2]}</span>
+                    <span style="color: var(--accent);">P${currentPlayer} の番</span>
+                `;
             }
         }
 
-        restartBtn.addEventListener('click', initGame);
-        modalRestartBtn.addEventListener('click', initGame);
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            cards.forEach(card => {
+                const el = document.createElement('div');
+                el.classList.add('card');
+                if (card.isFlipped || card.isMatched) {
+                    el.classList.add(card.isMatched ? 'matched' : 'flipped');
+                    el.textContent = card.symbol;
+                } else {
+                    el.textContent = '？';
+                }
+                el.addEventListener('click', () => handleCardClick(card.id));
+                board.appendChild(el);
+            });
+        }
 
-        // 初期化実行
-        initGame();
+        function handleCardClick(id) {
+            if (lockBoard) return;
+            const clickedCard = cards.find(c => c.id === id);
+
+            if (clickedCard.isFlipped || clickedCard.isMatched) return;
+
+            startTimer();
+
+            clickedCard.isFlipped = true;
+            renderBoard();
+
+            if (!firstCard) {
+                firstCard = clickedCard;
+                return;
+            }
+
+            secondCard = clickedCard;
+            lockBoard = true;
+
+            if (currentMode === 1) {
+                moves++;
+            }
+
+            checkForMatch();
+        }
+
+        function checkForMatch() {
+            const isMatch = firstCard.symbol === secondCard.symbol;
+
+            if (isMatch) {
+                firstCard.isMatched = true;
+                secondCard.isMatched = true;
+                matches++;
+
+                if (currentMode === 2) {
+                    scores[currentPlayer]++;
+                }
+
+                resetTurn(true);
+                checkGameOver();
+            } else {
+                setTimeout(() => {
+                    firstCard.isFlipped = false;
+                    secondCard.isFlipped = false;
+                    
+                    if (currentMode === 2) {
+                        currentPlayer = currentPlayer === 1 ? 2 : 1;
+                    }
+
+                    resetTurn(false);
+                }, 1000);
+            }
+        }
+
+        function resetTurn(matched) {
+            firstCard = null;
+            secondCard = null;
+            lockBoard = false;
+            renderStatusBar();
+            renderBoard();
+        }
+
+        function checkGameOver() {
+            if (matches === 8) {
+                stopTimer();
+                setTimeout(() => {
+                    showResult();
+                }, 400);
+            }
+        }
+
+        function showResult() {
+            const modal = document.getElementById('resultModal');
+            const title = document.getElementById('resultTitle');
+            const text = document.getElementById('resultText');
+
+            if (currentMode === 1) {
+                title.textContent = 'おめでとう！クリア！';
+                text.innerHTML = `手数: ${moves}手<br>経過時間: ${seconds}秒`;
+            } else {
+                if (scores[1] > scores[2]) {
+                    title.textContent = 'プレイヤー1の勝ち！';
+                } else if (scores[2] > scores[1]) {
+                    title.textContent = 'プレイヤー2の勝ち！';
+                } else {
+                    title.textContent = '引き分け！';
+                }
+                text.innerHTML = `プレイヤー1: ${scores[1]} ペア<br>プレイヤー2: ${scores[2]} ペア`;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').classList.add('hidden');
+        }
     </script>
 </body>
 </html>
