@@ -163,7 +163,7 @@
         <h3>あそびかた・ルール</h3>
         <ul>
             <li><strong>操作方法:</strong> 画面下の「◀」「▶」ボタン、またはキーボードの「←」「→」キーで自車を左右に動かします。</li>
-            <li><strong>ルール:</strong> 上からやってくる対向車を避けてください。ぶつかるとゲームオーバーです。</li>
+            <li><strong>ルール:</strong> 上からやってくる対向車を避けてください。ぶつかると画面が揺れて火花が散るクラッシュ演出（音と振動つき）が出て、ゲームオーバーです。</li>
             <li>時間が経つにつれてスピードが上がり、難しくなります。</li>
         </ul>
     </div>
@@ -203,44 +203,65 @@
         let obstacles = [];
         let obstacleTimer = 0;
 
+        // Crash effect state
+        let crashing = false;
+        let crashFrame = 0;
+        let crashPoint = { x: 160, y: 300 };
+        let particles = [];
+        let audioCtx = null;
+
         // Input state
         const keys = { left: false, right: false };
 
         // --- Drawing Helpers ---
-        function drawCar(x, y, width, height, color, isPlayer) {
+        function drawCar(x, y, width, height, color, isPlayer, angle) {
             ctx.save();
-            ctx.translate(x, y);
+            ctx.translate(x + width / 2, y + height / 2);
+            if (angle) ctx.rotate(angle);
 
             // Car body
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.roundRect(0, 0, width, height, 8);
+            ctx.roundRect(-width / 2, -height / 2, width, height, 8);
             ctx.fill();
 
             // Windshield
             ctx.fillStyle = '#111';
             if (isPlayer) {
-                ctx.fillRect(8, 12, width - 16, 15);
+                ctx.fillRect(-width / 2 + 8, -height / 2 + 12, width - 16, 15);
                 // Headlights
                 ctx.fillStyle = '#ffff00';
-                ctx.fillRect(4, 2, 6, 4);
-                ctx.fillRect(width - 10, 2, 6, 4);
+                ctx.fillRect(-width / 2 + 4, -height / 2 + 2, 6, 4);
+                ctx.fillRect(width / 2 - 10, -height / 2 + 2, 6, 4);
             } else {
-                ctx.fillRect(8, height - 27, width - 16, 15);
+                ctx.fillRect(-width / 2 + 8, height / 2 - 27, width - 16, 15);
                 // Tail lights
                 ctx.fillStyle = '#ff0000';
-                ctx.fillRect(4, height - 6, 6, 4);
-                ctx.fillRect(width - 10, height - 6, 6, 4);
+                ctx.fillRect(-width / 2 + 4, height / 2 - 6, 6, 4);
+                ctx.fillRect(width / 2 - 10, height / 2 - 6, 6, 4);
             }
 
             // Wheels
             ctx.fillStyle = '#000';
-            ctx.fillRect(-4, 10, 4, 14);
-            ctx.fillRect(width, 10, 4, 14);
-            ctx.fillRect(-4, height - 24, 4, 14);
-            ctx.fillRect(width, height - 24, 4, 14);
+            ctx.fillRect(-width / 2 - 4, -height / 2 + 10, 4, 14);
+            ctx.fillRect(width / 2, -height / 2 + 10, 4, 14);
+            ctx.fillRect(-width / 2 - 4, height / 2 - 24, 4, 14);
+            ctx.fillRect(width / 2, height / 2 - 24, 4, 14);
 
             ctx.restore();
+        }
+
+        function drawStar(cx, cy, r) {
+            ctx.beginPath();
+            for (let i = 0; i < 16; i++) {
+                const rad = (i % 2 === 0) ? r : r * 0.45;
+                const a = (Math.PI / 8) * i - Math.PI / 2;
+                const px = cx + Math.cos(a) * rad;
+                const py = cy + Math.sin(a) * rad;
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
         }
 
         // --- Game Logic ---
@@ -253,7 +274,86 @@
             player.lane = 1;
             obstacles = [];
             obstacleTimer = 0;
+            crashing = false;
+            crashFrame = 0;
+            particles = [];
+            ensureAudio();
             gameRunning = true;
+            requestAnimationFrame(update);
+        }
+
+        function ensureAudio() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch (e) { /* 音が出ない環境では無視 */ }
+        }
+
+        function playCrashSound() {
+            if (!audioCtx) return;
+            try {
+                const t = audioCtx.currentTime;
+                // ノイズ（衝撃音）
+                const len = Math.floor(audioCtx.sampleRate * 0.4);
+                const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                const src = audioCtx.createBufferSource();
+                src.buffer = buf;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 900;
+                const g = audioCtx.createGain();
+                g.gain.setValueAtTime(0.5, t);
+                g.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+                src.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+                src.start();
+                // 低いドンッという音
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(140, t);
+                osc.frequency.exponentialRampToValueAtTime(32, t + 0.35);
+                const g2 = audioCtx.createGain();
+                g2.gain.setValueAtTime(0.6, t);
+                g2.gain.exponentialRampToValueAtTime(0.01, t + 0.38);
+                osc.connect(g2); g2.connect(audioCtx.destination);
+                osc.start(); osc.stop(t + 0.4);
+            } catch (e) { /* 無視 */ }
+        }
+
+        function startCrash(obs) {
+            crashing = true;
+            crashFrame = 0;
+            const px = getLaneX(player.lane);
+            crashPoint = { x: px + player.width / 2, y: Math.min(player.y, obs.y) + 30 };
+            particles = [];
+            const colors = ['#ffcc00', '#ff9500', '#ff3b30', '#d8d8d8', '#8e8e93'];
+            for (let i = 0; i < 38; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const sp = 1 + Math.random() * 4.5;
+                particles.push({
+                    x: crashPoint.x, y: crashPoint.y,
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1,
+                    life: 0, maxLife: 34 + Math.random() * 22,
+                    size: 2 + Math.random() * 3,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+            playCrashSound();
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+
+        function updateCrash() {
+            crashFrame++;
+            for (const p of particles) {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life++;
+            }
+            render();
+            if (crashFrame >= 55) {
+                crashing = false;
+                gameOver();
+                return;
+            }
             requestAnimationFrame(update);
         }
 
@@ -270,6 +370,7 @@
 
         function update() {
             if (!gameRunning) return;
+            if (crashing) { updateCrash(); return; }
 
             // --- Update Variables ---
             distance += gameSpeed * 0.1;
@@ -317,13 +418,25 @@
                     player.y < obs.y + obs.height - 5 &&
                     player.y + player.height - 5 > obs.y
                 ) {
-                    gameOver();
+                    startCrash(obs);
+                    updateCrash();
                     return;
                 }
             }
 
-            // --- Render ---
+            render();
+
+            requestAnimationFrame(update);
+        }
+
+        function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            if (crashing) {
+                const mag = Math.max(0, 9 - crashFrame * 0.35);
+                ctx.translate((Math.random() - 0.5) * 2 * mag, (Math.random() - 0.5) * 2 * mag);
+            }
 
             // 1. Draw Road Background
             ctx.fillStyle = '#444';
@@ -360,7 +473,14 @@
             }
 
             // 3. Draw Player
-            drawCar(playerX, player.y, player.width, player.height, player.color, true);
+            const playerX = getLaneX(player.lane);
+            if (crashing) {
+                const angle = Math.min(1.15, crashFrame * 0.045);
+                const blinkColor = (crashFrame % 6 < 3) ? '#ff5252' : player.color;
+                drawCar(playerX, player.y, player.width, player.height, blinkColor, true, angle);
+            } else {
+                drawCar(playerX, player.y, player.width, player.height, player.color, true, 0);
+            }
 
             // 4. Draw HUD (Distance & Score)
             ctx.fillStyle = '#fff';
@@ -368,7 +488,48 @@
             ctx.fillText(`距離: ${Math.floor(distance)} m`, 15, 25);
             ctx.fillText(`スコア: ${Math.floor(score)}`, 200, 25);
 
-            requestAnimationFrame(update);
+            ctx.restore();
+
+            if (crashing) {
+                // 赤いフラッシュ
+                const fa = Math.max(0, 0.42 - crashFrame * 0.02);
+                if (fa > 0) {
+                    ctx.fillStyle = `rgba(255, 0, 0, ${fa})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                // 衝撃の星
+                if (crashFrame < 16) {
+                    ctx.save();
+                    ctx.globalAlpha = 1 - crashFrame / 16;
+                    ctx.fillStyle = '#ffd60a';
+                    drawStar(crashPoint.x, crashPoint.y, 10 + crashFrame * 3.2);
+                    ctx.restore();
+                }
+                // 火花パーティクル
+                for (const p of particles) {
+                    if (p.life >= p.maxLife) continue;
+                    ctx.save();
+                    ctx.globalAlpha = 1 - p.life / p.maxLife;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                // 「クラッシュ！」の文字
+                const sc = Math.min(1, crashFrame / 8);
+                ctx.save();
+                ctx.translate(160, 210);
+                ctx.scale(sc, sc);
+                ctx.font = 'bold 36px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#000';
+                ctx.strokeText('クラッシュ！', 0, 0);
+                ctx.fillStyle = '#ff3b30';
+                ctx.fillText('クラッシュ！', 0, 0);
+                ctx.restore();
+            }
         }
 
         // --- Controls Handling ---
