@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロ</title>
+    <style>
+        :root {
+            --board-bg: #2e8b57;
+            --cell-border: #1b4d3e;
+            --panel-bg: #f4f4f9;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin: 5px 0 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .menu-container {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.secondary {
+            background-color: #555;
+        }
+        button.secondary:hover {
+            background-color: #444;
+        }
+
+        select {
+            padding: 7px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .status-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 360px;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .score-box {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mini-disc {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .mini-disc.black { background: #000; }
+        .mini-disc.white { background: #fff; border: 1px solid #999; }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 100vw;
+            height: 100vw;
+            max-width: 360px;
+            max-height: 360px;
+            background-color: var(--board-bg);
+            border: 4px solid var(--cell-border);
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .cell {
+            background-color: var(--board-bg);
+            border: 1px solid var(--cell-border);
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .disc {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .disc.black {
+            background: radial-gradient(circle at 35% 35%, #555, #000);
+        }
+
+        .disc.white {
+            background: radial-gradient(circle at 35% 35%, #fff, #ccc);
+            border: 1px solid #aaa;
+        }
+
+        .valid-move::after {
+            content: '';
+            width: 30%;
+            height: 30%;
+            background-color: rgba(0, 0, 0, 0.25);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .message-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .message-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .rules-container {
+            margin-top: 15px;
+            max-width: 360px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .rules-container h2 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+        }
+
+        .rules-container ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>オセロ</h1>
+
+    <div class="menu-container">
+        <select id="modeSelect">
+            <option value="cpu">コンピュータと対戦</option>
+            <option value="pvp">2人で対戦</option>
+        </select>
+        <button id="resetButton">もう一度</button>
+    </div>
+
+    <div class="status-container">
+        <div class="score-box">
+            <span class="mini-disc black"></span> 黒: <span id="blackScore">2</span>
+        </div>
+        <div id="turnIndicator">黒の番</div>
+        <div class="score-box">
+            <span class="mini-disc white"></span> 白: <span id="whiteScore">2</span>
+        </div>
+    </div>
+
+    <div class="board" id="board">
+        <div class="message-overlay" id="messageOverlay">
+            <div id="winnerText">黒の勝ち！</div>
+            <button id="overlayResetButton" style="margin-top: 15px;">もう一度遊ぶ</button>
+        </div>
+    </div>
+
+    <div class="rules-container">
+        <h2>あそびかた・ルール</h2>
+        <ul>
+            <li>黒が先手、白が後手です。</li>
+            <li>自分の石で相手の石を挟めるマスにしか置けません（縦・横・斜め）。</li>
+            <li>挟んだ相手の石は自分の石の色にひっくり返ります。</li>
+            <li>置ける場所がない場合は自動的にパスとなります。</li>
+            <li>両者とも置ける場所がなくなるとゲーム終了です。</li>
+            <li>最終的に石の多い方の勝ちとなります。</li>
+        </ul>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 8;
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+
+        let board = [];
+        let currentTurn = BLACK;
+        let gameMode = 'cpu'; // 'cpu' or 'pvp'
+        let gameOver = false;
+        let isProcessing = false;
+
+        const directions = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [ 0, -1],          [ 0, 1],
+            [ 1, -1], [ 1, 0], [ 1, 1]
+        ];
+
+        const boardEl = document.getElementById('board');
+        const blackScoreEl = document.getElementById('blackScore');
+        const whiteScoreEl = document.getElementById('whiteScore');
+        const turnIndicatorEl = document.getElementById('turnIndicator');
+        const modeSelect = document.getElementById('modeSelect');
+        const resetButton = document.getElementById('resetButton');
+        const overlayResetButton = document.getElementById('overlayResetButton');
+        const messageOverlay = document.getElementById('messageOverlay');
+        const winnerText = document.getElementById('winnerText');
+
+        function initGame() {
+            board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(EMPTY));
+            board[3][3] = WHITE;
+            board[3][4] = BLACK;
+            board[4][3] = BLACK;
+            board[4][4] = WHITE;
+            
+            currentTurn = BLACK;
+            gameOver = false;
+            isProcessing = false;
+            messageOverlay.classList.remove('show');
+            
+            updateGame();
+        }
+
+        function createBoardDOM() {
+            boardEl.innerHTML = '';
+            boardEl.appendChild(messageOverlay);
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.addEventListener('click', handleCellClick);
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function getFlips(r, c, player, currentBoard) {
+            if (currentBoard[r][c] !== EMPTY) return [];
+            
+            const opponent = player === BLACK ? WHITE : BLACK;
+            let totalFlips = [];
+
+            for (let [dr, dc] of directions) {
+                let tempFlips = [];
+                let currR = r + dr;
+                let currC = c + dc;
+
+                while (
+                    currR >= 0 && currR < BOARD_SIZE &&
+                    currC >= 0 && currC < BOARD_SIZE &&
+                    currentBoard[currR][currC] === opponent
+                ) {
+                    tempFlips.push([currR, currC]);
+                    currR += dr;
+                    currC += dc;
+                }
+
+                if (
+                    tempFlips.length > 0 &&
+                    currR >= 0 && currR < BOARD_SIZE &&
+                    currC >= 0 && currC < BOARD_SIZE &&
+                    currentBoard[currR][currC] === player
+                ) {
+                    totalFlips = totalFlips.concat(tempFlips);
+                }
+            }
+            return totalFlips;
+        }
+
+        function getValidMoves(player, currentBoard) {
+            let moves = [];
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (getFlips(r, c, player, currentBoard).length > 0) {
+                        moves.push({r, c});
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function handleCellClick(e) {
+            if (gameOver || isProcessing) return;
+            if (gameMode === 'cpu' && currentTurn === WHITE) return; // CPUの番は操作不可
+
+            const r = parseInt(this.dataset.row);
+            const c = parseInt(this.dataset.col);
+
+            const flips = getFlips(r, c, currentTurn, board);
+            if (flips.length === 0) return;
+
+            makeMove(r, c, flips);
+        }
+
+        function makeMove(r, c, flips) {
+            board[r][c] = currentTurn;
+            for (let [fr, fc] of flips) {
+                board[fr][fc] = currentTurn;
+            }
+
+            // 手番交代の判定
+            const nextTurn = currentTurn === BLACK ? WHITE : BLACK;
+            const nextValidMoves = getValidMoves(nextTurn, board);
+            const currentValidMoves = getValidMoves(currentTurn, board);
+
+            if (nextValidMoves.length > 0) {
+                currentTurn = nextTurn;
+            } else if (currentValidMoves.length > 0) {
+                // 次のプレイヤーが置けず、今のプレイヤーは置けるならパスなしで続行
+                // ただし今回は標準的に「相手が置けなければもう一度自分の番」
+            } else {
+                // 両者置けない -> ゲーム終了
+                endGame();
+                updateGame();
+                return;
+            }
+
+            updateGame();
+
+            // CPU対戦時の処理
+            if (!gameOver && gameMode === 'cpu' && currentTurn === WHITE) {
+                isProcessing = true;
+                setTimeout(cpuMove, 500);
+            }
+        }
+
+        function cpuMove() {
+            if (gameOver) return;
+
+            const validMoves = getValidMoves(WHITE, board);
+            if (validMoves.length === 0) {
+                isProcessing = false;
+                return;
+            }
+
+            // CPUのAI思考: 角を取れるなら優先、それ以外は多くひっくり返せる手
+            const corners = [[0,0], [0,7], [7,0], [7,7]];
+            let selectedMove = null;
+
+            // 角チェック
+            for (let move of validMoves) {
+                if (corners.some(corner => corner[0] === move.r && corner[1] === move.c)) {
+                    selectedMove = move;
+                    break;
+                }
+            }
+
+            // 角がなければ一番多くひっくり返せる手
+            if (!selectedMove) {
+                let maxFlips = -1;
+                for (let move of validMoves) {
+                    const flips = getFlips(move.r, move.c, WHITE, board);
+                    if (flips.length > maxFlips) {
+                        maxFlips = flips.length;
+                        selectedMove = move;
+                    }
+                }
+            }
+
+            const flips = getFlips(selectedMove.r, selectedMove.c, WHITE, board);
+            makeMove(selectedMove.r, selectedMove.c, flips);
+            isProcessing = false;
+        }
+
+        function updateGame() {
+            // スコア計算
+            let blackCount = 0;
+            let whiteCount = 0;
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === BLACK) blackCount++;
+                    if (board[r][c] === WHITE) whiteCount++;
+                }
+            }
+
+            blackScoreEl.textContent = blackCount;
+            whiteScoreEl.textContent = whiteCount;
+
+            if (!gameOver) {
+                turnIndicatorEl.textContent = currentTurn === BLACK ? "黒の番" : "白の番";
+            }
+
+            // 盤面描画更新
+            const cells = boardEl.children;
+            const validMoves = gameOver ? [] : getValidMoves(currentTurn, board);
+
+            let cellIndex = 0;
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    // cellIndexはmessageOverlayを避けるため調整が必要だが、
+                    // boardEl.childrenにはmessageOverlayも含まれるため、クラス名で処理する
+                }
+            }
+
+            // DOM再構築の代わりに各セルの状態を更新
+            const cellElements = boardEl.querySelectorAll('.cell');
+            cellElements.forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                
+                cell.innerHTML = '';
+                cell.classList.remove('valid-move');
+
+                if (board[r][c] === BLACK) {
+                    const disc = document.createElement('div');
+                    disc.className = 'disc black';
+                    cell.appendChild(disc);
+                } else if (board[r][c] === WHITE) {
+                    const disc = document.createElement('div');
+                    disc.className = 'disc white';
+                    cell.appendChild(disc);
+                } else if (!gameOver) {
+                    // 合法手チェック
+                    if (validMoves.some(m => m.r === r && m.c === c)) {
+                        if (!(gameMode === 'cpu' && currentTurn === WHITE)) {
+                            cell.classList.add('valid-move');
+                        }
+                    }
+                }
+            });
+
+            // パスの自動判定（現在のプレイヤーが置けない場合）
+            if (!gameOver) {
+                if (validMoves.length === 0) {
+                    // 相手も置けないか確認
+                    const opponent = currentTurn === BLACK ? WHITE : BLACK;
+                    const opponentMoves = getValidMoves(opponent, board);
+                    if (opponentMoves.length === 0) {
+                        endGame();
+                    } else {
+                        // 自動パス
+                        currentTurn = opponent;
+                        turnIndicatorEl.textContent = (currentTurn === BLACK ? "黒" : "白") + "はパス (次の番)";
+                        setTimeout(() => {
+                            updateGame();
+                            if (gameMode === 'cpu' && currentTurn === WHITE) {
+                                isProcessing = true;
+                                setTimeout(cpuMove, 500);
+                            }
+                        }, 1000);
+                    }
+                }
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            let blackCount = 0;
+            let whiteCount = 0;
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === BLACK) blackCount++;
+                    if (board[r][c] === WHITE) whiteCount++;
+                }
+            }
+
+            let text = "";
+            if (blackCount > whiteCount) {
+                text = `黒の勝ち！ (${blackCount}対${whiteCount})`;
+            } else if (whiteCount > blackCount) {
+                text = `白の勝ち！ (${whiteCount}対${blackCount})`;
+            } else {
+                text = `引き分け！ (${blackCount}対${whiteCount})`;
+            }
+
+            winnerText.textContent = text;
+            messageOverlay.classList.add('show');
+        }
+
+        // イベントリスナー
+        modeSelect.addEventListener('change', (e) => {
+            gameMode = e.target.value;
+            initGame();
+        });
+
+        resetButton.addEventListener('click', initGame);
+        overlayResetButton.addEventListener('click', initGame);
+
+        // 初期化
+        createBoardDOM();
+        initGame();
+    </script>
+</body>
+</html>
