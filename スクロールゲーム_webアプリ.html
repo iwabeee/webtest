@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スクロールゲーム</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin: 5px 0 10px 0;
+            text-align: center;
+        }
+        #game-container {
+            position: relative;
+            width: 320px;
+            height: 480px;
+            background-color: #333;
+            border: 4px solid #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+        canvas {
+            display: block;
+        }
+        /* UI Screens */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+        }
+        .screen.hidden {
+            display: none;
+        }
+        .screen h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: #ff3b30;
+            text-shadow: 2px 2px #000;
+        }
+        .screen p {
+            font-size: 1rem;
+            margin: 5px 0 20px 0;
+        }
+        .btn {
+            background-color: #4cd964;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px #2e8b2e;
+            transition: 0.1s;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 #2e8b2e;
+        }
+        /* Touch Controls */
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            width: 320px;
+            margin-top: 10px;
+        }
+        .ctrl-btn {
+            width: 150px;
+            height: 60px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+            box-shadow: 0 4px #0056b3;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .ctrl-btn:active {
+            background-color: #0056b3;
+            transform: translateY(2px);
+            box-shadow: 0 2px #003d82;
+        }
+        /* Rules section */
+        #rules {
+            width: 320px;
+            margin-top: 15px;
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            box-sizing: border-box;
+        }
+        #rules h3 {
+            margin: 0 0 5px 0;
+            font-size: 0.95rem;
+            color: #ffcc00;
+        }
+        #rules ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>スクロールゲーム</h1>
+
+    <div id="game-container">
+        <!-- Canvas -->
+        <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h2>ROAD RIDER</h2>
+            <p>対向車をよけて走り抜けろ！</p>
+            <button class="btn" id="start-btn">スタート</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen hidden">
+            <h2>GAME OVER</h2>
+            <p>走行距離: <span id="final-distance">0</span> m</p>
+            <p>スコア: <span id="final-score">0</span></p>
+            <button class="btn" id="restart-btn">もう一度</button>
+        </div>
+    </div>
+
+    <!-- Mobile Controllers -->
+    <div id="controls">
+        <button class="ctrl-btn" id="left-btn">◀</button>
+        <button class="ctrl-btn" id="right-btn">▶</button>
+    </div>
+
+    <!-- Rules -->
+    <div id="rules">
+        <h3>あそびかた・ルール</h3>
+        <ul>
+            <li><strong>操作方法:</strong> 画面下の「◀」「▶」ボタン、またはキーボードの「←」「→」キーで自車を左右に動かします。</li>
+            <li><strong>ルール:</strong> 上からやってくる対向車を避けてください。ぶつかるとゲームオーバーです。</li>
+            <li>時間が経つにつれてスピードが上がり、難しくなります。</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Screens & UI
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('gameover-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const finalDistanceEl = document.getElementById('final-distance');
+        const finalScoreEl = document.getElementById('final-score');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+
+        // Game Constants & Variables
+        const LANE_WIDTH = 320 / 3; // 3 lanes (approx 106.6px each)
+        let gameRunning = false;
+        let score = 0;
+        let distance = 0;
+        let gameSpeed = 4;
+        let roadLineOffset = 0;
+
+        // Player object
+        const player = {
+            lane: 1, // 0: left, 1: center, 2: right
+            width: 40,
+            height: 70,
+            y: 380,
+            color: '#00ffff'
+        };
+
+        // Obstacles array
+        let obstacles = [];
+        let obstacleTimer = 0;
+
+        // Input state
+        const keys = { left: false, right: false };
+
+        // --- Drawing Helpers ---
+        function drawCar(x, y, width, height, color, isPlayer) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Car body
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, width, height, 8);
+            ctx.fill();
+
+            // Windshield
+            ctx.fillStyle = '#111';
+            if (isPlayer) {
+                ctx.fillRect(8, 12, width - 16, 15);
+                // Headlights
+                ctx.fillStyle = '#ffff00';
+                ctx.fillRect(4, 2, 6, 4);
+                ctx.fillRect(width - 10, 2, 6, 4);
+            } else {
+                ctx.fillRect(8, height - 27, width - 16, 15);
+                // Tail lights
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(4, height - 6, 6, 4);
+                ctx.fillRect(width - 10, height - 6, 6, 4);
+            }
+
+            // Wheels
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-4, 10, 4, 14);
+            ctx.fillRect(width, 10, 4, 14);
+            ctx.fillRect(-4, height - 24, 4, 14);
+            ctx.fillRect(width, height - 24, 4, 14);
+
+            ctx.restore();
+        }
+
+        // --- Game Logic ---
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            score = 0;
+            distance = 0;
+            gameSpeed = 4;
+            player.lane = 1;
+            obstacles = [];
+            obstacleTimer = 0;
+            gameRunning = true;
+            requestAnimationFrame(update);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            finalDistanceEl.innerText = Math.floor(distance);
+            finalScoreEl.innerText = Math.floor(score);
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function getLaneX(laneIndex) {
+            return laneIndex * LANE_WIDTH + (LANE_WIDTH - player.width) / 2;
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // --- Update Variables ---
+            distance += gameSpeed * 0.1;
+            score += gameSpeed * 0.05;
+            gameSpeed += 0.001; // Gradually increase speed
+
+            // Road line scroll
+            roadLineOffset += gameSpeed;
+            if (roadLineOffset >= 40) {
+                roadLineOffset = 0;
+            }
+
+            // Spawn obstacles
+            obstacleTimer++;
+            if (obstacleTimer > Math.max(30, 90 - Math.floor(gameSpeed * 5))) {
+                obstacleTimer = 0;
+                let lane = Math.floor(Math.random() * 3);
+                // Prevent overlapping on same spawn moment if needed, simple random is fine
+                obstacles.push({
+                    lane: lane,
+                    y: -80,
+                    width: 40,
+                    height: 70,
+                    color: '#ff3b30'
+                });
+            }
+
+            // Move obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].y += gameSpeed;
+                // Remove out of bounds
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            // Collision Detection
+            const playerX = getLaneX(player.lane);
+            for (let obs of obstacles) {
+                const obsX = getLaneX(obs.lane);
+                // AABB Collision
+                if (
+                    playerX < obsX + obs.width - 5 &&
+                    playerX + player.width - 5 > obsX &&
+                    player.y < obs.y + obs.height - 5 &&
+                    player.y + player.height - 5 > obs.y
+                ) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // --- Render ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Road Background
+            ctx.fillStyle = '#444';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Side grass/borders
+            ctx.fillStyle = '#2e7d32';
+            ctx.fillRect(0, 0, 10, canvas.height);
+            ctx.fillRect(canvas.width - 10, 0, 10, canvas.height);
+
+            // Lane markers (dashed lines)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([20, 20]);
+            ctx.lineDashOffset = -roadLineOffset;
+
+            // Line 1
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH, 0);
+            ctx.lineTo(LANE_WIDTH, canvas.height);
+            ctx.stroke();
+
+            // Line 2
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH * 2, 0);
+            ctx.lineTo(LANE_WIDTH * 2, canvas.height);
+            ctx.stroke();
+
+            ctx.setLineDash([]); // Reset line dash
+
+            // 2. Draw Obstacles
+            for (let obs of obstacles) {
+                drawCar(getLaneX(obs.lane), obs.y, obs.width, obs.height, obs.color, false);
+            }
+
+            // 3. Draw Player
+            drawCar(playerX, player.y, player.width, player.height, player.color, true);
+
+            // 4. Draw HUD (Distance & Score)
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(`距離: ${Math.floor(distance)} m`, 15, 25);
+            ctx.fillText(`スコア: ${Math.floor(score)}`, 200, 25);
+
+            requestAnimationFrame(update);
+        }
+
+        // --- Controls Handling ---
+        function moveLeft() {
+            if (!gameRunning) return;
+            if (player.lane > 0) {
+                player.lane--;
+            }
+        }
+
+        function moveRight() {
+            if (!gameRunning) return;
+            if (player.lane < 2) {
+                player.lane++;
+            }
+        }
+
+        // Keyboard events
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') {
+                moveLeft();
+            } else if (e.key === 'ArrowRight' || e.key === 'd') {
+                moveRight();
+            }
+        });
+
+        // Touch / Click events for mobile buttons
+        leftbtnHandler = (e) => { e.preventDefault(); moveLeft(); };
+        rightbtnHandler = (e) => { e.preventDefault(); moveRight(); };
+
+        leftBtn.addEventListener('click', moveLeft);
+        rightBtn.addEventListener('click', moveRight);
+        leftBtn.addEventListener('touchstart', leftbtnHandler);
+        rightBtn.addEventListener('touchstart', rightbtnHandler);
+
+        // UI Buttons
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        // Polyfill for roundRect if needed (Standard in modern modern browsers, but safe to include fallback if strictly necessary, canvas roundRect is supported globally since 2021/2022)
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                this.beginPath();
+                this.moveTo(x + r, y);
+                this.arcTo(x + w, y, x + w, y + h, r);
+                this.arcTo(x + w, y + h, x, y + h, r);
+                this.arcTo(x, y + h, x, y, r);
+                this.arcTo(x, y, x + w, y, r);
+                this.closePath();
+                return this;
+            };
+        }
+    </script>
+</body>
+</html>
